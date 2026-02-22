@@ -1,0 +1,18 @@
+# Core ML
+xgboost
+lightgbm
+transformers>=4.40.0
+datasets>=2.19.0
+accelerate>=0.29.0
+sentencepiece
+protobuf
+
+# Data
+pandas>=2.0.0
+scikit-learn
+seaborn
+matplotlib
+
+# Notebook
+ipykernel
+jupyter
