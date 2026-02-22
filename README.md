@@ -68,7 +68,7 @@ UKTaxCategorisationDPL/
 ├── dpl_finetune_cpu.ipynb       # Training: TF-IDF models + DistilBERT (CPU)
 ├── dpl_cpu_confidence.ipynb     # Training: CPU models with confidence analysis
 ├── dpl_hierarchical_confidence.ipynb # Training: two-stage hierarchical + conf.
-├── dpl_finetune_hierarchical.ipynb   # Training: two-stage hierarchical (flat baseline)
+├── dpl_hierarchical.ipynb            # Training: two-stage hierarchical (flat baseline)
 │
 ├── generate_dpl_data.py         # Synthetic dataset generator
 ├── analyse_dataset.py           # Dataset statistics and EDA script
@@ -180,7 +180,7 @@ final tag, and provides two independent confidence signals.
 
 ---
 
-### `dpl_finetune_hierarchical.ipynb` — Hierarchical vs Flat Baseline
+### `dpl_hierarchical.ipynb` — Hierarchical vs Flat Baseline
 
 Benchmarks the hierarchical classifier against a flat LinearSVC baseline,
 providing confusion analysis across the group structure.
@@ -208,11 +208,11 @@ section — no re-training required.
 
 | Eval notebook | Loads from | Companion training notebook |
 |---|---|---|
-| `dpl_finetune_eval.ipynb` | `models/deberta/` | `dpl_finetune.ipynb` |
+| `dpl_main_eval.ipynb` | `models/{tfidf_svc,tfidf_lr,distilbert}/` | `dpl_main.ipynb` |
+| `dpl_main_confidence_eval.ipynb` | `models/{cal_svc,lr,distilbert_conf}/` | `dpl_main_confidence.ipynb` |
 | `dpl_boosting_comparison_eval.ipynb` | `models/{svc_base,lgbm,xgboost}/` | `dpl_boosting_comparison.ipynb` |
-| `dpl_finetune_cpu_eval.ipynb` | `models/{tfidf_svc,tfidf_lr,distilbert}/` | `dpl_finetune_cpu.ipynb` |
 | `dpl_hierarchical_confidence_eval.ipynb` | `models/hierarchical_conf/` | `dpl_hierarchical_confidence.ipynb` |
-| `dpl_finetune_hierarchical_eval.ipynb` | `models/hierarchical/` | `dpl_finetune_hierarchical.ipynb` |
+| `dpl_hierarchical_eval.ipynb` | `models/hierarchical/` | `dpl_hierarchical.ipynb` |
 
 Each eval notebook follows this structure:
 1. **Imports** — identical to the training notebook
