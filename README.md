@@ -31,49 +31,54 @@ revenue, and more. See [`DPLTags.md`](DPLTags.md) for the full list.
 ```
 UKTaxCategorisationDPL/
 │
-├── datasets/                    # Train / val / test CSVs
+├── datasets/                         # Train / val / test CSVs
 │   ├── dpl_full.csv
 │   ├── dpl_train.csv
 │   ├── dpl_val.csv
 │   └── dpl_test.csv
 │
-├── models/                      # Saved model artefacts (gitignored)
-│   ├── svc_base/                # TF-IDF + LinearSVC
-│   ├── lgbm/                    # TF-IDF + LightGBM
-│   ├── xgboost/                 # TF-IDF + SVD + XGBoost
-│   ├── tfidf_svc/               # Pipeline: TF-IDF → LinearSVC (CPU notebook)
-│   ├── tfidf_lr/                # Pipeline: TF-IDF → Logistic Regression
-│   ├── cal_svc/                 # CalibratedClassifierCV wrapper
-│   ├── lr/                      # Standalone Logistic Regression
-│   ├── distilbert/              # Fine-tuned DistilBERT
-│   ├── distilbert_conf/         # DistilBERT with confidence analysis
-│   ├── hierarchical/            # Two-stage hierarchical classifier
-│   └── hierarchical_conf/       # Two-stage hierarchical + confidence scores
+├── models/                           # Saved model artefacts (gitignored)
+│   ├── tfidf_svc/                    # Pipeline: TF-IDF → LinearSVC
+│   ├── tfidf_lr/                     # Pipeline: TF-IDF → Logistic Regression
+│   ├── distilbert/                   # Fine-tuned DistilBERT (CPU)
+│   ├── cal_svc/                      # CalibratedClassifierCV wrapper (LinearSVC)
+│   ├── lr/                           # Standalone Logistic Regression
+│   ├── distilbert_conf/              # DistilBERT with confidence analysis
+│   ├── svc_base/                     # TF-IDF + LinearSVC (boosting comparison)
+│   ├── lgbm/                         # TF-IDF + LightGBM
+│   ├── xgboost/                      # TF-IDF + SVD + XGBoost
+│   ├── hierarchical/                 # Two-stage hierarchical classifier
+│   ├── hierarchical_conf/            # Two-stage hierarchical + confidence scores
+│   ├── cpu_model_comparison.json     # Metrics: dpl_main.ipynb
+│   ├── cpu_confidence_metrics.json   # Metrics: dpl_main_confidence.ipynb
+│   └── boosting_comparison.json      # Metrics: dpl_boosting_comparison.ipynb
 │
-├── docs/                        # Design notes and research
+├── docs/                             # Design notes and research
 │   ├── 1-Explore-Options.md
 │   ├── 2-Data-analysis-and-strategy.md
 │   ├── 3-Hierarchical-grouping-and-confusion-pairs.md
 │   └── 4-data-generation.md
 │
-├── evaluation/                  # Evaluation-only notebooks (load saved model)
-│   ├── dpl_finetune_eval.ipynb
+├── evaluation/                       # Evaluation-only notebooks (load saved model)
+│   ├── dpl_main_eval.ipynb
+│   ├── dpl_main_confidence_eval.ipynb
 │   ├── dpl_boosting_comparison_eval.ipynb
-│   ├── dpl_finetune_cpu_eval.ipynb
-│   ├── dpl_hierarchical_confidence_eval.ipynb
-│   └── dpl_finetune_hierarchical_eval.ipynb
+│   ├── dpl_hierarchical_eval.ipynb
+│   └── dpl_hierarchical_confidence_eval.ipynb
 │
-├── dpl_finetune.ipynb           # Training: DeBERTa-v3-base (GPU)
-├── dpl_boosting_comparison.ipynb# Training: LinearSVC vs LightGBM vs XGBoost
-├── dpl_finetune_cpu.ipynb       # Training: TF-IDF models + DistilBERT (CPU)
-├── dpl_cpu_confidence.ipynb     # Training: CPU models with confidence analysis
-├── dpl_hierarchical_confidence.ipynb # Training: two-stage hierarchical + conf.
-├── dpl_hierarchical.ipynb            # Training: two-stage hierarchical (flat baseline)
+├── dpl_main.ipynb                    # Training: TF-IDF + LinearSVC / LogReg / DistilBERT (CPU)
+├── dpl_main_confidence.ipynb         # Training: CPU models with confidence scores
+├── dpl_boosting_comparison.ipynb     # Training: LinearSVC vs LightGBM vs XGBoost
+├── dpl_hierarchical.ipynb            # Training: two-stage hierarchical vs flat baseline
+├── dpl_hierarchical_confidence.ipynb # Training: two-stage hierarchical + confidence scores
 │
-├── generate_dpl_data.py         # Synthetic dataset generator
-├── analyse_dataset.py           # Dataset statistics and EDA script
-├── DPLTags.md                   # Full DPL tag reference table
-├── requirements.txt             # Python dependencies
+├── dpl_main.html                     # HTML export of dpl_main.ipynb
+├── dpl_main_confidence.html          # HTML export of dpl_main_confidence.ipynb
+│
+├── generate_dpl_data.py              # Synthetic dataset generator
+├── analyse_dataset.py                # Dataset statistics and EDA script
+├── DPLTags.md                        # Full DPL tag reference table
+├── requirements.txt                  # Python dependencies
 └── README.md
 ```
 
@@ -84,17 +89,47 @@ UKTaxCategorisationDPL/
 Each notebook is self-contained: it loads the dataset, trains the model(s),
 evaluates on the test set, and saves all artefacts to `models/`.
 
-### `dpl_finetune.ipynb` — DeBERTa-v3-base (GPU)
+### `dpl_main.ipynb` — CPU-Friendly Baseline (TF-IDF + DistilBERT)
 
-Fine-tunes `microsoft/deberta-v3-base` for sequence classification.
+Trains three models optimised for CPU speed and compares them head-to-head.
 
-- Tokenises descriptions with the DeBERTa SentencePiece tokeniser
-- Trains with HuggingFace `Trainer` (mixed precision on GPU)
-- Evaluates with accuracy, weighted F1, per-class F1 bar chart, and confusion
-  matrix heatmap
-- Saves model + tokeniser to `models/deberta/model/`
+| Model | Accuracy | Weighted F1 |
+|---|---|---|
+| TF-IDF + LinearSVC | 99.82 % | 99.82 % |
+| TF-IDF + Logistic Regression | 99.82 % | 99.82 % |
+| DistilBERT (fine-tuned, CPU) | 100.00 % | 100.00 % |
 
-**Best for**: highest raw accuracy, production-grade classification.
+- Full `sklearn.pipeline.Pipeline` objects (vectoriser + classifier in one file)
+- DistilBERT fine-tuned with HuggingFace `Trainer` (CPU mode, fp32)
+- Bar chart comparison, per-class F1 analysis, inference examples
+- Saves to `models/{tfidf_svc, tfidf_lr, distilbert}/`
+
+**Best for**: CPU-only environments with a balance of speed and accuracy.
+
+---
+
+### `dpl_main_confidence.ipynb` — CPU Models with Confidence Scores
+
+Extends the CPU comparison with calibrated probability scores for every prediction.
+
+| Model | Accuracy | Weighted F1 | Mean Confidence |
+|---|---|---|---|
+| TF-IDF + Calibrated SVC | 99.96 % | 99.96 % | 97.8 % |
+| TF-IDF + Logistic Regression | 99.96 % | 99.96 % | 96.0 % |
+| DistilBERT | 99.91 % | 99.91 % | 90.1 % |
+
+| Model | How confidence is produced |
+|---|---|
+| Calibrated SVC | `CalibratedClassifierCV` wraps LinearSVC with Platt sigmoid calibration |
+| Logistic Regression | Native `predict_proba()` |
+| DistilBERT | Softmax over logits |
+
+- Confidence histogram, reliability diagrams, low-confidence sample analysis
+- Confidence threshold analysis (coverage vs accuracy trade-off)
+- Top-K inference helper with ranked predictions
+- Saves to `models/{cal_svc, lr, distilbert_conf}/`
+
+**Best for**: production use-cases where a confidence threshold must gate predictions.
 
 ---
 
@@ -102,64 +137,55 @@ Fine-tunes `microsoft/deberta-v3-base` for sequence classification.
 
 Compares three gradient-boosted / linear approaches on the same TF-IDF features.
 
-| Model | Accuracy | Weighted F1 | Train time |
-|---|---|---|---|
-| LinearSVC | 99.96 % | 99.96 % | ~5 s |
-| LightGBM | 99.74 % | 99.74 % | ~139 s |
-| XGBoost | 99.47 % | 99.47 % | ~137 s |
+| Model | Accuracy | Weighted F1 | Train time | Mean Confidence |
+|---|---|---|---|---|
+| LinearSVC | 99.96 % | 99.96 % | ~5 s | 97.8 % |
+| LightGBM | 99.74 % | 99.74 % | ~139 s | 99.4 % |
+| XGBoost | 99.47 % | 99.47 % | ~137 s | 96.7 % |
 
 - TF-IDF vectoriser + SVD dimensionality reduction (for tree models)
 - `CalibratedClassifierCV` wrapper on LinearSVC for probability estimates
-- Per-model: accuracy/F1 comparison table, per-class F1 chart, confidence
-  distribution, LightGBM feature importance
-- Saves each model + its TF-IDF/SVD/label-encoder to `models/{svc_base,lgbm,xgboost}/`
+- Per-model: accuracy/F1 comparison table, per-class F1 chart, confidence distribution, LightGBM feature importance
+- Saves to `models/{svc_base, lgbm, xgboost}/`
 
 **Best for**: very fast inference, no GPU required, near-perfect accuracy.
 
 ---
 
-### `dpl_finetune_cpu.ipynb` — TF-IDF pipelines + DistilBERT (CPU)
-
-CPU-friendly comparison of sklearn pipelines and a lightweight transformer.
-
-| Model | Accuracy | Weighted F1 |
-|---|---|---|
-| TF-IDF + LinearSVC | 99.82 % | 99.82 % |
-| TF-IDF + LogReg | 99.82 % | 99.82 % |
-| DistilBERT | 100.00 % | 100.00 % |
-
-- Full `sklearn.pipeline.Pipeline` objects (vectoriser + classifier in one file)
-- DistilBERT fine-tuned with HuggingFace `Trainer` (CPU mode, fp32)
-- Bar chart comparison, per-class F1 analysis, inference examples
-- Saves to `models/{tfidf_svc,tfidf_lr,distilbert}/`
-
-**Best for**: CPU-only environments with a balance of speed and accuracy.
-
----
-
-### `dpl_cpu_confidence.ipynb` — CPU Models with Confidence Analysis
-
-Extends the CPU comparison with calibrated probability scores.
-
-| Model | Accuracy | Mean Confidence |
-|---|---|---|
-| Calibrated LinearSVC | 99.96 % | 97.8 % |
-| Logistic Regression | 99.96 % | 96.0 % |
-| DistilBERT | 99.91 % | — |
-
-- `CalibratedClassifierCV` wrapping `LinearSVC` for well-calibrated probabilities
-- Confidence histogram, reliability diagram, low-confidence sample analysis
-- Saves to `models/{cal_svc,lr,distilbert_conf}/`
-
-**Best for**: production use-cases where a confidence threshold must gate predictions.
-
----
-
-### `dpl_hierarchical_confidence.ipynb` — Two-Stage Hierarchical Classifier
+### `dpl_hierarchical.ipynb` — Hierarchical 2-Step Classifier vs Flat Baseline
 
 Implements a custom `HierarchicalDPLClassifier` that first predicts a broad
 **group** (e.g. *Finance & Treasury*) and then narrows to a specific **DPL tag**
-within that group.
+within that group. Benchmarks the approach against a flat LinearSVC baseline.
+
+```
+Description
+    │
+    ▼  Level 1 — 9-class group classifier
+  Group  (e.g. "Finance & Treasury")
+    │
+    ▼  Level 2 — group-specific classifier (~5–13 classes)
+  DPL Tag  (e.g. "DPL035")
+```
+
+| Approach | Accuracy | Weighted F1 |
+|---|---|---|
+| Flat LinearSVC | 99.96 % | 99.96 % |
+| Hierarchical (L1 + L2) | 99.96 % | 99.96 % |
+| L1 group only | 100.00 % | 100.00 % |
+
+- All models use TF-IDF + LinearSVC — trains in < 30 seconds total on CPU
+- L1 confusion matrix (group-level errors), L2 per-group accuracy breakdown
+- High-risk confusion pair analysis
+- Saves to `models/hierarchical/`
+
+**Best for**: understanding where and why the classifier confuses specific tags.
+
+---
+
+### `dpl_hierarchical_confidence.ipynb` — Hierarchical Classifier + Confidence Scores
+
+Extends the hierarchical model with calibrated probability scores at each stage.
 
 | Metric | Value |
 |---|---|
@@ -169,34 +195,12 @@ within that group.
 | Mean group confidence | 99.6 % |
 | Mean joint confidence | 97.5 % |
 
-- 10 top-level groups derived from the DPL taxonomy
-- Separate L2 classifier per group (one-vs-rest within the group)
-- Joint confidence = L1 confidence × L2 confidence
-- Confidence threshold analysis and group-level heatmaps
+- Joint confidence = L1 confidence × L2 confidence (most conservative overall measure)
+- Confidence threshold analysis and group-level confidence heatmaps
 - Saves full hierarchy to `models/hierarchical_conf/`
 
 **Best for**: explainability — surfaces which semantic group was chosen before the
 final tag, and provides two independent confidence signals.
-
----
-
-### `dpl_hierarchical.ipynb` — Hierarchical vs Flat Baseline
-
-Benchmarks the hierarchical classifier against a flat LinearSVC baseline,
-providing confusion analysis across the group structure.
-
-| Approach | Accuracy | Weighted F1 |
-|---|---|---|
-| Flat LinearSVC | 99.96 % | 99.96 % |
-| Hierarchical (L1+L2) | 99.96 % | 99.96 % |
-| L1 group only | 100.00 % | 100.00 % |
-
-- L1 confusion matrix (group-level errors)
-- L2 per-group accuracy breakdown
-- High-risk confusion pair analysis
-- Saves to `models/hierarchical/`
-
-**Best for**: understanding where and why the classifier confuses specific tags.
 
 ---
 
@@ -208,11 +212,11 @@ section — no re-training required.
 
 | Eval notebook | Loads from | Companion training notebook |
 |---|---|---|
-| `dpl_main_eval.ipynb` | `models/{tfidf_svc,tfidf_lr,distilbert}/` | `dpl_main.ipynb` |
-| `dpl_main_confidence_eval.ipynb` | `models/{cal_svc,lr,distilbert_conf}/` | `dpl_main_confidence.ipynb` |
-| `dpl_boosting_comparison_eval.ipynb` | `models/{svc_base,lgbm,xgboost}/` | `dpl_boosting_comparison.ipynb` |
-| `dpl_hierarchical_confidence_eval.ipynb` | `models/hierarchical_conf/` | `dpl_hierarchical_confidence.ipynb` |
+| `dpl_main_eval.ipynb` | `models/{tfidf_svc, tfidf_lr, distilbert}/` | `dpl_main.ipynb` |
+| `dpl_main_confidence_eval.ipynb` | `models/{cal_svc, lr, distilbert_conf}/` | `dpl_main_confidence.ipynb` |
+| `dpl_boosting_comparison_eval.ipynb` | `models/{svc_base, lgbm, xgboost}/` | `dpl_boosting_comparison.ipynb` |
 | `dpl_hierarchical_eval.ipynb` | `models/hierarchical/` | `dpl_hierarchical.ipynb` |
+| `dpl_hierarchical_confidence_eval.ipynb` | `models/hierarchical_conf/` | `dpl_hierarchical_confidence.ipynb` |
 
 Each eval notebook follows this structure:
 1. **Imports** — identical to the training notebook
@@ -232,10 +236,10 @@ Synthetic data generated by `generate_dpl_data.py`.
 
 | Split | Rows |
 |---|---|
-| Full | ~57,000 |
-| Train | ~45,600 |
-| Validation | ~5,700 |
-| Test | ~5,700 |
+| Full | ~15,123 |
+| Train | ~10,584 |
+| Validation | ~2,267 |
+| Test | ~2,272 |
 
 Each row: `dpl_tag` (e.g. `DPL003`), `description` (free-text accounting line).
 Descriptions include realistic noise: invoice numbers, vendor names, dates,
@@ -259,13 +263,6 @@ python -m venv .venv311
 pip install -r requirements.txt
 ```
 
-For GPU training (`dpl_finetune.ipynb`) install the CUDA-enabled PyTorch build
-before running:
-
-```bash
-pip install torch --index-url https://download.pytorch.org/whl/cu121
-```
-
 Launch Jupyter:
 
 ```bash
@@ -283,8 +280,8 @@ automatically to `models/`.
 
 ### Evaluate a saved model
 
-Open the corresponding notebook in `evaluation/` and run all cells. No GPU or
-long training run required.
+Open the corresponding notebook in `evaluation/` and run all cells. No long
+training run required.
 
 ### Run inference from Python
 
@@ -305,11 +302,27 @@ print(predictions)
 # ['DPL003', 'DPL037', 'DPL065']
 ```
 
+```python
+import joblib
+
+# Example: Calibrated SVC — with confidence scores
+data = joblib.load("models/cal_svc/model.joblib")
+pipe, le = data["pipeline"], data["label_encoder"]
+
+proba = pipe.predict_proba(descriptions)
+predicted_indices = proba.argmax(axis=1)
+tags = le.inverse_transform(predicted_indices)
+confidences = proba.max(axis=1)
+
+for desc, tag, conf in zip(descriptions, tags, confidences):
+    print(f"{tag}  ({conf:.1%})  {desc[:60]}")
+```
+
 ---
 
 ## DPL Tag Groups
 
-The 76 tags are organised into 10 semantic groups used by the hierarchical models:
+The 76 tags are organised into 9 semantic groups used by the hierarchical models:
 
 | Group | Example tags |
 |---|---|
@@ -318,11 +331,10 @@ The 76 tags are organised into 10 semantic groups used by the hierarchical model
 | Professional & External Services | DPL003, DPL009, DPL038, DPL049, DPL060 |
 | Operational & Administrative | DPL008, DPL025, DPL033, DPL047, DPL054, DPL055, DPL061, DPL063, DPL064, DPL069 |
 | Gains, Losses & Adjustments | DPL013–DPL023, DPL026–DPL029, DPL039, DPL043, DPL044 |
-| Revenue & Income | DPL006, DPL024, DPL030, DPL045, DPL058, DPL066, DPL072 |
-| Tax & Compliance | DPL003, DPL015, DPL031, DPL036, DPL053 |
+| Revenue & Income | DPL024, DPL030, DPL045, DPL066, DPL072 |
+| Tax & Compliance | DPL015, DPL031, DPL036, DPL053 |
 | Depreciation & Amortisation | DPL002, DPL010, DPL067 |
 | IT, Marketing & Communications | DPL001, DPL037, DPL056, DPL064 |
-| Other | DPL046, DPL074 |
 
 See [`docs/3-Hierarchical-grouping-and-confusion-pairs.md`](docs/3-Hierarchical-grouping-and-confusion-pairs.md)
 for the full grouping rationale.
@@ -336,9 +348,10 @@ for the full grouping rationale.
 | `scikit-learn` | TF-IDF, LinearSVC, Logistic Regression, calibration |
 | `lightgbm` | Gradient-boosted trees |
 | `xgboost` | Gradient-boosted trees |
-| `transformers` | DeBERTa, DistilBERT fine-tuning and inference |
+| `transformers` | DistilBERT fine-tuning and inference |
 | `datasets` | HuggingFace dataset wrapper for tokenised inputs |
-| `accelerate` | HuggingFace distributed / mixed-precision training |
+| `accelerate` | HuggingFace mixed-precision training utilities |
+| `sentencepiece` / `protobuf` | Tokeniser support |
 | `pandas` | Data loading and manipulation |
 | `matplotlib` / `seaborn` | Evaluation visualisations |
 | `joblib` | Model serialisation |
